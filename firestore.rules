@@ -1,0 +1,234 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: cars
+    // Document ID: auto-generated
+    // Fields:
+    //   - make: string (required)
+    //   - model: string (required)
+    //   - year: number (required)
+    //   - priceEur: number (required)
+    //   - mileage: string
+    //   - engine: string
+    //   - transmission: string
+    //   - exteriorColor: string
+    //   - interiorColor: string
+    //   - description: string
+    //   - images: list of strings
+    //   - isFeatured: boolean
+    //   - status: string (Available, Sold, Reserved)
+    //   - createdAt: timestamp
+    //
+    // Collection: settings
+    // Document ID: 'general'
+    // Fields:
+    //   - instagramUrl: string
+    //   - facebookUrl: string
+    //   - contactEmail: string
+    //   - contactPhone: string
+    //
+    // Collection: users
+    // Document ID: user UID
+    // Fields:
+    //   - email: string
+    //   - role: string ('admin', 'user')
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        (request.auth.token.email == "fhsteman@gmail.com" && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isWorkerOrAdmin() {
+      return isAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'worker'
+      );
+    }
+
+    function hasOnlyAllowedFields(allowedFields) {
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+
+    function isValidString(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    function isValidCar() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['make', 'model', 'year', 'countryPrices', 'mileage', 'driversSeat', 'transmission', 'exteriorColor', 'interiorColor', 'description', 'images', 'isFeatured', 'status', 'createdAt', 'price', 'priceEur', 'currency', 'engine', 'engineType', 'horsepower', 'performance', 'vin', 'condition', 'costPrice', 'supplierInfo', 'importDate', 'customsStatus', 'location', 'locationCountry', 'transitStatus', 'transitOrigin', 'transitDestination']) &&
+             data.make is string && data.make.size() > 0 && data.make.size() <= 100 &&
+             data.model is string && data.model.size() > 0 && data.model.size() <= 100 &&
+             data.year is number && data.year >= 1900 && data.year <= 2100 &&
+             (!('countryPrices' in data) || data.countryPrices is map) &&
+             (!('mileage' in data) || isValidString(data.mileage, 50)) &&
+             (!('driversSeat' in data) || isValidString(data.driversSeat, 100)) &&
+             (!('transmission' in data) || isValidString(data.transmission, 50)) &&
+             (!('exteriorColor' in data) || isValidString(data.exteriorColor, 50)) &&
+             (!('interiorColor' in data) || isValidString(data.interiorColor, 50)) &&
+             (!('description' in data) || isValidString(data.description, 5000)) &&
+             (!('images' in data) || (data.images is list && data.images.size() <= 50)) &&
+             (!('isFeatured' in data) || data.isFeatured is bool) &&
+             data.status in ['Available', 'Sold', 'Reserved'] &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('price' in data) || data.price is number) &&
+             (!('priceEur' in data) || data.priceEur is number) &&
+             (!('costPrice' in data) || data.costPrice is number) &&
+             (!('currency' in data) || data.currency is string) &&
+             (!('engine' in data) || data.engine is string) &&
+             (!('engineType' in data) || data.engineType is string) &&
+             (!('horsepower' in data) || data.horsepower is string) &&
+             (!('performance' in data) || data.performance is string) &&
+             (!('vin' in data) || data.vin is string) &&
+             (!('condition' in data) || data.condition is string) &&
+             (!('supplierInfo' in data) || isValidString(data.supplierInfo, 200)) &&
+             (!('importDate' in data) || isValidString(data.importDate, 50)) &&
+             (!('customsStatus' in data) || isValidString(data.customsStatus, 50)) &&
+             (!('location' in data) || isValidString(data.location, 100)) &&
+             (!('locationCountry' in data) || isValidString(data.locationCountry, 100)) &&
+             (!('transitStatus' in data) || data.transitStatus in ['in_stock', 'needs_transport', 'in_transit']) &&
+             (!('transitOrigin' in data) || isValidString(data.transitOrigin, 100)) &&
+             (!('transitDestination' in data) || isValidString(data.transitDestination, 100));
+    }
+
+    function isValidSettings() {
+      // Allow any fields for settings since it's dynamic
+      return true;
+    }
+
+    function isValidInquiry() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['name', 'email', 'phone', 'message', 'carId', 'carMakeModel', 'status', 'createdAt', 'replies', 'lastContactedAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 200 &&
+             (!('phone' in data) || isValidString(data.phone, 50)) &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 5000 &&
+             (!('carId' in data) || isValidString(data.carId, 100)) &&
+             (!('carMakeModel' in data) || isValidString(data.carMakeModel, 200)) &&
+             data.status in ['new', 'read', 'contacted'] &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('replies' in data) || data.replies is list) &&
+             (!('lastContactedAt' in data) || data.lastContactedAt is timestamp);
+    }
+
+    function isValidAnalytics() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['page', 'device', 'language', 'userAgent', 'timestamp', 'country', 'duration']) &&
+             data.page is string && data.page.size() <= 500 &&
+             (!('device' in data) || isValidString(data.device, 100)) &&
+             (!('language' in data) || isValidString(data.language, 100)) &&
+             (!('userAgent' in data) || isValidString(data.userAgent, 500)) &&
+             (!('country' in data) || isValidString(data.country, 100)) &&
+             (!('duration' in data) || data.duration is number) &&
+             (!('timestamp' in data) || data.timestamp is timestamp);
+    }
+
+    function isValidUser() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['email', 'role', 'createdAt']) &&
+             data.email is string && data.email.size() <= 200 &&
+             data.role in ['admin', 'user', 'worker'] &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidOrder() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['customerName', 'carId', 'totalAmount', 'profit', 'balanceDue', 'status', 'createdAt']) &&
+             data.customerName is string && data.customerName.size() > 0 && data.customerName.size() <= 100 &&
+             data.carId is string && data.carId.size() > 0 && data.carId.size() <= 100 &&
+             data.totalAmount is string && data.totalAmount.size() > 0 && data.totalAmount.size() <= 50 &&
+             (!('profit' in data) || isValidString(data.profit, 50)) &&
+             (!('balanceDue' in data) || isValidString(data.balanceDue, 50)) &&
+             data.status in ['pending', 'awaiting_deposit', 'completed'] &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidShipment() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['supplier', 'origin', 'destination', 'eta', 'status', 'createdAt']) &&
+             data.supplier is string && data.supplier.size() > 0 && data.supplier.size() <= 100 &&
+             data.origin is string && data.origin.size() > 0 && data.origin.size() <= 100 &&
+             data.destination is string && data.destination.size() > 0 && data.destination.size() <= 100 &&
+             data.eta in ['this_week', 'next_week', 'this_month', 'tbd'] &&
+             data.status in ['active', 'customs', 'delivered'] &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidCampaign() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['name', 'platform', 'budget', 'status', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.platform is string && data.platform.size() > 0 && data.platform.size() <= 100 &&
+             data.budget is string && data.budget.size() > 0 && data.budget.size() <= 50 &&
+             data.status in ['active', 'paused', 'completed'] &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    // Rules
+    match /cars/{carId} {
+      allow read: if true;
+      allow create: if isWorkerOrAdmin() && isValidCar();
+      allow update: if isWorkerOrAdmin() && isValidCar();
+      allow delete: if isWorkerOrAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidSettings();
+      allow update: if isAdmin() && isValidSettings();
+      allow delete: if isAdmin();
+    }
+
+    match /analytics/{analyticsId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if isValidAnalytics();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // Users can create their own profile with role 'user', admins can create any
+      allow create: if isAuthenticated() && isValidUser() && (
+        (request.auth.uid == userId && request.resource.data.role == 'user') || isAdmin()
+      );
+      // Only admins can update roles to prevent privilege escalation
+      allow update: if isAdmin() && isValidUser();
+      allow delete: if isAdmin();
+    }
+
+    match /inquiries/{inquiryId} {
+      allow read, update, delete: if isWorkerOrAdmin();
+      allow create: if isValidInquiry();
+    }
+
+    match /orders/{orderId} {
+      allow read, update, delete: if isWorkerOrAdmin();
+      allow create: if isWorkerOrAdmin() && isValidOrder();
+    }
+
+    match /shipments/{shipmentId} {
+      allow read, update, delete: if isWorkerOrAdmin();
+      allow create: if isWorkerOrAdmin() && isValidShipment();
+    }
+
+    match /campaigns/{campaignId} {
+      allow read, update, delete: if isWorkerOrAdmin();
+      allow create: if isWorkerOrAdmin() && isValidCampaign();
+    }
+  }
+}

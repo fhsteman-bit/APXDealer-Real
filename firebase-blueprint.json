@@ -1,0 +1,157 @@
+{
+  "entities": {
+    "Car": {
+      "title": "Car",
+      "description": "A vehicle available for sale or recently sold.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "make": { "type": "string" },
+        "model": { "type": "string" },
+        "year": { "type": "number" },
+        "countryPrices": { 
+          "type": "object", 
+          "additionalProperties": { "type": "number" } 
+        },
+        "price": { "type": "number", "description": "Legacy field" },
+        "priceEur": { "type": "number", "description": "Legacy field" },
+        "costPrice": { "type": "number", "description": "Internal cost price" },
+        "currency": { "type": "string", "description": "Legacy field" },
+        "engine": { "type": "string", "description": "Legacy field" },
+        "mileage": { "type": "string" },
+        "driversSeat": { "type": "string" },
+        "transmission": { "type": "string" },
+        "exteriorColor": { "type": "string" },
+        "interiorColor": { "type": "string" },
+        "description": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "isFeatured": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["Available", "Sold", "Reserved"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "supplierInfo": { "type": "string" },
+        "importDate": { "type": "string" },
+        "customsStatus": { "type": "string" },
+        "location": { "type": "string" },
+        "locationCountry": { "type": "string" },
+        "transitStatus": { "type": "string", "enum": ["in_stock", "needs_transport", "in_transit"] },
+        "transitOrigin": { "type": "string" },
+        "transitDestination": { "type": "string" }
+      },
+      "required": ["make", "model", "year", "priceEur", "status"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global application settings like social media links.",
+      "type": "object",
+      "properties": {
+        "instagramUrl": { "type": "string" },
+        "facebookUrl": { "type": "string" },
+        "contactEmail": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "heroTitle": { "type": "string" },
+        "heroSubtitle": { "type": "string" },
+        "heroImage": { "type": "string" },
+        "aboutText": { "type": "string" },
+        "workingHours": { "type": "string" }
+      }
+    },
+    "User": {
+      "title": "User",
+      "description": "A user of the system, potentially an admin.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user", "worker"] }
+      },
+      "required": ["email", "role"]
+    },
+    "Inquiry": {
+      "title": "Inquiry",
+      "description": "A customer inquiry or lead.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "message": { "type": "string" },
+        "carId": { "type": "string" },
+        "carMakeModel": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "read", "contacted"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "message", "status"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A sales order.",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string" },
+        "carId": { "type": "string" },
+        "totalAmount": { "type": "string" },
+        "profit": { "type": "string" },
+        "balanceDue": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "awaiting_deposit", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["customerName", "carId", "totalAmount", "status"]
+    },
+    "Shipment": {
+      "title": "Shipment",
+      "description": "A logistics shipment.",
+      "type": "object",
+      "properties": {
+        "supplier": { "type": "string" },
+        "origin": { "type": "string" },
+        "destination": { "type": "string" },
+        "eta": { "type": "string", "enum": ["this_week", "next_week", "this_month", "tbd"] },
+        "status": { "type": "string", "enum": ["active", "customs", "delivered"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["supplier", "origin", "destination", "eta", "status"]
+    },
+    "Campaign": {
+      "title": "Campaign",
+      "description": "A marketing campaign.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "platform": { "type": "string" },
+        "budget": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "paused", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "platform", "budget", "status"]
+    }
+  },
+  "firestore": {
+    "/cars/{carId}": {
+      "schema": { "$ref": "#/entities/Car" },
+      "description": "Collection of all cars."
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/Settings" },
+      "description": "Global settings. Usually just one document 'general'."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Registered users and their roles."
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/Inquiry" },
+      "description": "Collection of all customer inquiries."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Collection of all sales orders."
+    },
+    "/shipments/{shipmentId}": {
+      "schema": { "$ref": "#/entities/Shipment" },
+      "description": "Collection of all logistics shipments."
+    },
+    "/campaigns/{campaignId}": {
+      "schema": { "$ref": "#/entities/Campaign" },
+      "description": "Collection of all marketing campaigns."
+    }
+  }
+}
